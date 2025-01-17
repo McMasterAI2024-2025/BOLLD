@@ -4,14 +4,26 @@
 # 📚 Learning
 # 🧩 Decoder
 
-## Webapp that uses body language and lip transcriptions to detect and prevent threats in various situations! 
+## B.O.L.L.D leverages body language, lip transcriptions and reinforcement learning to detect threats in real-time.
+
+### Team Members:
+- Nicole Sorokin
+- Julia Brzustowski
+- Zuhair Qureshi
+- Grady Rueffer
+- Sophia Shantharupan
+
+### Use Cases:
+- Security applications: Detecting threats or violent language when audio is corrupted or unavailable during meetings.
+- Violence mitigation: This project can potentially be used for public safety, such as in campus surveillance or implemented in glasses with cameras of something of that sort to aid people with disabilities such as blindness to be notified of any potential threats they may not be able to see.
+
+### ...add tech stack here
 
 run the app using the following command
 ```
+
 streamlit run app.py
 ```
-
-...add tech stack here
 
 Currently the app.py contains the body language code *training and details about which can be found in the body_lang_decoder folder*
 
