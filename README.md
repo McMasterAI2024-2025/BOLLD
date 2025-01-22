@@ -27,7 +27,15 @@ streamlit run app.py
 
 Currently the app.py contains the body language code *training and details about which can be found in the body_lang_decoder folder*
 
-The lip to text component is under construction and will be added soon.
+The lip reading part is currently being implementd in the app.py as well. It is currently using the MediaPipe library to read the lip movements and detect the differnt phonemes patterns to detect key words spoken. Then each key word is compared to a list of threatening words and the threat level is calculated. The threat level is then used to determine the state of the system. Passed into the Q-Learning table, the state is used to determine the action to take using reinforcement learning.
+
+Below are the images that contain the key landmarks used to detect the lip movements and the phonemes patterns which is used in the model.
+
+### Face Landmarks:
+![face_image](face_landmarks.png)
+
+### Getting a closer look at the lip/mouth area:
+![lip_image](lip_landmarks.png)
 
 Additionally, the app.py contains reinforcement learning code, details below:
 
