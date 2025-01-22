@@ -20,8 +20,7 @@
 ## The 2 Main Stages:  
 
 ### First:
-- Employ conventional computer vision techniques classify a person's physical actions (both face and body language) and convert to a numerical value.
-- Utilize distinct models to analyze lip movements to text and convert to a numerical value. 
+- Use trained body language model and lip reading (using mediapipe landmarks) to compute numerical value of threat probability (0-1) for each, then combine.
 
 ### Second:  
 - Based on the two inputs from the first stage, train a reinforcement learning model to recognize sequences of actions and lip movements that indicate malicious behavior (0 -> non-malicious, 1 -> malicious, and scale of 0-1 of 0 being non-threatening key-words and 1 being threatening key-words).
@@ -40,8 +39,9 @@
 - This method uses Dlib for detecting facial landmarks and preprocessing the GRID dataset, then inputs a sequence of frames to 3 layers of 
 of a CNN, each followed by a spatial max-pooling layer, then features are processed by two bidrectional GRUs; each time-step of the GRU output is processed by a linear layer and a softmax over the vocabulary. The model is then trained using CTC.
 - Jan 13: Switching over to another model due to the previous one lacking the ability to process a live video stream. From here on out is to base our model off of something existing to transcribe lip movement to text (maybe whisper?) then use our own model to sleect words and compare against a dictionary or something to determine level of violence.
+- Jan 21: Had issues with making previous models work with live video stream. Decided to move to a technique that uses lip/mouth landmarks to detect phomenes and then detected certain key words. Which is stored in a dictionary with a value of the threat level.
 
-##### Preprocessing:
+##### Preprocessing: NEEDS TO BE UPDATED
 - Loaded video frames and detected faces and facial landmarks using dlib pretrained models
 - Implemented mouth cropping based on mouth landmarks with reference point stabilization
 - Uses a weighted average of the current and last frame
@@ -87,10 +87,11 @@ of a CNN, each followed by a spatial max-pooling layer, then features are proces
 - Working on RL
 
 ### Weeks 13-14:  
-- Working on connecting everything together
+- Pivoting on new lip reading model, implmeneting it in the app.py
 
 ### Week 15:  
 - Final touches  
+- Imrpoving accuracy
 - Maybe try to make it work with a webcam
 
 ## Process FLow Diagram:
