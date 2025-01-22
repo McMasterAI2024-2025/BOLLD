@@ -39,7 +39,7 @@
 - This method uses Dlib for detecting facial landmarks and preprocessing the GRID dataset, then inputs a sequence of frames to 3 layers of 
 of a CNN, each followed by a spatial max-pooling layer, then features are processed by two bidrectional GRUs; each time-step of the GRU output is processed by a linear layer and a softmax over the vocabulary. The model is then trained using CTC.
 - Jan 13: Switching over to another model due to the previous one lacking the ability to process a live video stream. From here on out is to base our model off of something existing to transcribe lip movement to text (maybe whisper?) then use our own model to sleect words and compare against a dictionary or something to determine level of violence.
-- Jan 21: Had issues with making previous models work with live video stream. Decided to move to a technique that uses lip/mouth landmarks to detect phomenes and then detected certain key words. Which is stored in a dictionary with a value of the threat level.
+- Jan 21: Had issues with making previous models work with live video stream, still working on it though there is some promise. Decided to explore another technique in the mean time that uses lip/mouth landmarks to detect phomenes and then detected certain key words. Which is stored in a dictionary with a value of the threat level.
 
 ##### Preprocessing: NEEDS TO BE UPDATED
 - Loaded video frames and detected faces and facial landmarks using dlib pretrained models
