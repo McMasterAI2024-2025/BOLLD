@@ -40,14 +40,7 @@
 of a CNN, each followed by a spatial max-pooling layer, then features are processed by two bidrectional GRUs; each time-step of the GRU output is processed by a linear layer and a softmax over the vocabulary. The model is then trained using CTC.
 - Jan 13: Switching over to another model due to the previous one lacking the ability to process a live video stream. From here on out is to base our model off of something existing to transcribe lip movement to text (maybe whisper?) then use our own model to sleect words and compare against a dictionary or something to determine level of violence.
 - Jan 21: Had issues with making previous models work with live video stream, still working on it though there is some promise. Decided to explore another technique in the mean time that uses lip/mouth landmarks to detect phomenes and then detected certain key words. Which is stored in a dictionary with a value of the threat level.
-
-##### Preprocessing: NEEDS TO BE UPDATED
-- Loaded video frames and detected faces and facial landmarks using dlib pretrained models
-- Implemented mouth cropping based on mouth landmarks with reference point stabilization
-- Uses a weighted average of the current and last frame
-- Example (may need to open in a media player, not directly in code editor):
-> [Uncropped Video](machine_learning/lip_reading/preprocessing/example/ex_1_uncropped.mp4)  
-> [Cropped Video](machine_learning/lip_reading/preprocessing/example/ex_1_cropped.mp4)
+- Jan 27: Enhanced LipNet model to be able to process live video stream and use dlib+shapepredictor68 to detect the mouth region.
 
 ## Rough Milestone Timelines:  
 ### Weeks 1-2:  
@@ -87,7 +80,9 @@ of a CNN, each followed by a spatial max-pooling layer, then features are proces
 - Working on RL
 
 ### Weeks 13-14:  
-- Pivoting on new lip reading model, implmeneting it in the app.py
+- Finishing the lip to text model
+- Implementing BERT model
+- Integrating lip to text+BERT into existing app.py
 
 ### Week 15:  
 - Final touches  

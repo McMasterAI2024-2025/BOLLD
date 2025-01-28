@@ -7,152 +7,155 @@ from modelutils import load_model
 import numpy as np
 import cv2
 import dlib
+import time
 from typing import List
+from collections import deque
+
+def preprocess_lip_frame(frame):
+    frame = tf.cast(frame, tf.float32)
+    frame_np = frame.numpy()
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    frame_np = clahe.apply(frame_np.astype(np.uint8))
+    frame_np = frame_np / 255.0
+    return tf.convert_to_tensor(frame_np)
 
 def get_lip_region(frame, detector, predictor):
-    """Extract lip region using facial landmarks."""
     gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     faces = detector(gray)
-    
     if not faces:
         return None
-    
-    # Get the first face
+
     face = faces[0]
     landmarks = predictor(gray, face)
-    
-    # Extract lip landmarks (points 48-68 in dlib's 68 point model)
-    lip_points = np.array([[landmarks.part(i).x, landmarks.part(i).y] for i in range(48, 68)])
-    
-    # Get the bounding box of lips with padding
-    x_min = np.min(lip_points[:, 0]) - 10
-    x_max = np.max(lip_points[:, 0]) + 10
-    y_min = np.min(lip_points[:, 1]) - 10
-    y_max = np.max(lip_points[:, 1]) + 10
-    
-    # Ensure coordinates are within frame bounds
-    x_min = max(0, x_min)
-    x_max = min(frame.shape[1], x_max)
-    y_min = max(0, y_min)
-    y_max = min(frame.shape[0], y_max)
-    
-    # Extract and resize lip region to match expected input size (40x140)
-    lip_region = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
+    outer_lips = np.array([[landmarks.part(i).x, landmarks.part(i).y] for i in range(48, 60)])
+    center_x = np.mean(outer_lips[:, 0])
+    center_y = np.mean(outer_lips[:, 1])
+    face_width = face.width()
+    padding_x = int(face_width * 0.15)
+    padding_y = int(face_width * 0.1)
+    x_min = int(max(0, center_x - padding_x))
+    x_max = int(min(frame.shape[1], center_x + padding_x))
+    y_min = int(max(0, center_y - padding_y))
+    y_max = int(min(frame.shape[0], center_y + padding_y))
+
+    lip_region = frame[y_min:y_max, x_min:x_max]
     if lip_region.size == 0:
         return None
-    
-    lip_region = cv2.resize(lip_region, (140, 46))
+    target_size = (140, 46)
+    lip_region = cv2.resize(lip_region, target_size)
     return lip_region
 
-# Set the page layout to wide mode
+class PredictionSmoother:
+    def __init__(self, window_size=3):
+        self.predictions = deque(maxlen=window_size)
+    
+    def update(self, new_prediction):
+        self.predictions.append(new_prediction)
+    
+    def get_smoothed_prediction(self):
+        if not self.predictions:
+            return None
+        prediction_counts = {}
+        for pred in self.predictions:
+            prediction_counts[pred] = prediction_counts.get(pred, 0) + 1
+        return max(prediction_counts.items(), key=lambda x: x[1])[0]
+
 st.set_page_config(layout="wide")
-
-# Main Title
-st.markdown("<h1 style='text-align: center;'>👄 LipBuddy: Your Lip Reading Companion</h1>", unsafe_allow_html=True)
-
-# Setup the sidebar
-with st.sidebar:
-    st.markdown("## Welcome to LipBuddy!")
-    st.markdown("""
-**👋 Hello there!** 
-
-1. **Start your camera**: The camera feed will be displayed in real-time.
-2. **Preview the video**: See yourself on the left side.
-3. **Model Visualization**: On the right, see what the ML model "sees" and the predicted tokens.
-4. **Final Transcription**: Get a decoded transcript of the video.
-
-**Pro Tips**:
-- Make sure you're well-lit and facing the camera
-- Keep your face centered and steady
-- Speak clearly and at a moderate pace
-    """)
+st.markdown("<h1 style='text-align: center;'>👄 Continuous Lip-to-Text</h1>", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
-# Initialize face detection
-detector = dlib.get_frontal_face_detector()
-# You'll need to download the shape predictor file and specify its path
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+start_button = st.button("Start")
+stop_button = st.button("Stop")
 
-# Initialize the camera
-cap = cv2.VideoCapture(0)
-frames = []
-count = 0
+if "running" not in st.session_state:
+    st.session_state.running = False
 
-# Load the model
-model = load_model()
-if model is None:
-    st.error("🚨 Failed to load the model. Please check your configuration.")
-    st.stop()
+if start_button:
+    st.session_state.running = True
+if stop_button:
+    st.session_state.running = False
 
-st.success("✅ Model loaded successfully!")
-
-# Create placeholders
-with col1:
-    st.markdown("### 📺 Camera Feed")
-    camera_placeholder = st.empty()
-
-with col2:
-    st.markdown("### 🔬 Model Input Visualization")
-    visualization_placeholder = st.empty()
-    prediction_placeholder = st.markdown("")
-    status_placeholder = st.empty()
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        st.error("Failed to capture frame from camera")
-        break
-
-    # Convert BGR to RGB for display
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+if st.session_state.running:
+    detector = dlib.get_frontal_face_detector()
+    predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+    smoother = PredictionSmoother()
     
-    # Display the camera feed with face rectangle and landmarks
-    camera_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     
-    # Get lip region
-    lip_region = get_lip_region(frame_rgb, detector, predictor)
+    frames = []
+    model = load_model()
+    if model is None:
+        st.error("🚨 Failed to load the model. Please check your configuration.")
+        st.stop()
+
+    st.success("✅ Model loaded successfully!")
+
+    with col1:
+        st.markdown("### 📺 Camera Feed")
+        camera_placeholder = st.empty()
+
+    with col2:
+        st.markdown("### 🔬 Model Input Visualization")
+        visualization_placeholder = st.empty()
+        prediction_placeholder = st.markdown("")
+        status_placeholder = st.empty()
+
+    confidence_placeholder = st.empty()
+    fps_placeholder = st.empty()
     
-    if lip_region is not None:
-        # Convert to grayscale and add to frames
-        lip_frame = tf.image.rgb_to_grayscale(lip_region)
-        frames.append(lip_frame)
-        status_placeholder.success("Face detected - tracking lips")
-    else:
-        status_placeholder.warning("No face detected - please center your face in the camera")
-        continue
+    prev_time = 0
 
-    # Process when we have enough frames
-    if len(frames) == 150:
-        count += 1
-        
-        # Preprocess frames
-        mean = tf.math.reduce_mean(frames)
-        std = tf.math.reduce_std(tf.cast(frames, tf.float32))
-        input_data = tf.cast((frames - mean), tf.float32) / std
-
-        # Prepare visualization
-        viz_frames = [np.squeeze(frame.numpy(), axis=-1) for frame in input_data]
-        viz_frames = [np.uint8(frame * 255) for frame in viz_frames]
-        
-        # Save and display the visualization
-        imageio.mimsave('output.gif', viz_frames, fps=10)
-        visualization_placeholder.image('output.gif', use_container_width=True)
-
-        # Run prediction
-        yhat = model.predict(tf.expand_dims(input_data, axis=0))
-        decoder = tf.keras.backend.ctc_decode(yhat, [75], greedy=True)[0][0].numpy()
-        
-        # Convert prediction to text
-        converted_prediction = tf.strings.reduce_join(num_to_char(decoder)).numpy().decode("utf-8")
-        prediction_placeholder.markdown(f"### 🗣️ Predicted Text\n`{converted_prediction}`")
-
-        # Remove oldest frame
-        frames.pop(0)
-
-        # Optional: Stop after certain number of predictions
-        if count >= 5:
+    while st.session_state.running:
+        ret, frame = cap.read()
+        if not ret:
+            st.error("Failed to capture frame from camera")
             break
 
-# Clean up
-cap.release()
+        current_time = time.time()
+        fps = 1 / (current_time - prev_time)
+        prev_time = current_time
+        fps_placeholder.text(f"FPS: {fps:.2f}")
+
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        camera_placeholder.image(frame_rgb, channels="RGB", use_container_width=True)
+
+        lip_region = get_lip_region(frame_rgb, detector, predictor)
+
+        if lip_region is not None:
+            lip_frame = preprocess_lip_frame(tf.image.rgb_to_grayscale(lip_region))
+            frames.append(lip_frame)
+            status_placeholder.success("Face detected - tracking lips")
+        else:
+            status_placeholder.warning("No face detected - please center your face in the camera")
+            continue
+
+        if len(frames) == 100:
+            mean = tf.math.reduce_mean(frames)
+            std = tf.math.reduce_std(tf.cast(frames, tf.float32))
+            input_data = tf.cast((frames - mean), tf.float32) / std
+
+            viz_frames = [
+                ((frame.numpy() - frame.numpy().min()) * 255 / (frame.numpy().max() - frame.numpy().min())).astype(np.uint8)
+                for frame in input_data
+            ]
+            imageio.mimsave('output.gif', viz_frames, fps=10)
+            visualization_placeholder.image('output.gif', use_container_width=True)
+
+            yhat = model.predict(tf.expand_dims(input_data, axis=0))
+            confidence = np.max(yhat)
+            confidence_placeholder.progress(float(confidence))
+
+            decoder = tf.keras.backend.ctc_decode(yhat, [100], beam_width=100)[0][0].numpy()
+            converted_prediction = tf.strings.reduce_join(num_to_char(decoder)).numpy().decode("utf-8")
+            smoother.update(converted_prediction)
+            smoothed_prediction = smoother.get_smoothed_prediction()
+
+            if smoothed_prediction:
+                prediction_placeholder.markdown(f"### 🗣️ Predicted Text\n`{smoothed_prediction}`")
+
+            frames.clear()
+
+    cap.release()
