@@ -191,10 +191,6 @@ if st.session_state.running:
             smoothed_prediction = smoothed_prediction.replace("stiure", "stupid")
             
 
-
-          
-                
-
             if smoothed_prediction:
                 prediction_placeholder.markdown(f"### 🗣️ Predicted Text\n`{smoothed_prediction}`")
                 violence_value = violence_classify(smoothed_prediction)
