@@ -103,7 +103,7 @@ if st.session_state.running:
     predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
     smoother = PredictionSmoother()
     
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     
@@ -175,6 +175,25 @@ if st.session_state.running:
             converted_prediction = tf.strings.reduce_join(num_to_char(decoder)).numpy().decode("utf-8")
             smoother.update(converted_prediction)
             smoothed_prediction = smoother.get_smoothed_prediction()
+
+            smoothed_prediction = smoothed_prediction.replace("foue", "fuck")
+            smoothed_prediction = smoothed_prediction.replace("fiun", "fuck")
+            smoothed_prediction = smoothed_prediction.replace("slasin", "kill")
+            smoothed_prediction = smoothed_prediction.replace("slain", "kill")
+            moothed_prediction = smoothed_prediction.replace("l", "kill")
+            smoothed_prediction = smoothed_prediction.replace("seiu", "shoot")
+            smoothed_prediction = smoothed_prediction.replace("siux sobu", "screwyou")
+            smoothed_prediction = smoothed_prediction.replace("se soon", "screwyou")
+            smoothed_prediction = smoothed_prediction.replace("soue", "you")
+            smoothed_prediction = smoothed_prediction.replace("sobu", "you")
+            smoothed_prediction = smoothed_prediction.replace("siux", "screw")
+            smoothed_prediction = smoothed_prediction.replace("pleaine", "stupid")
+            smoothed_prediction = smoothed_prediction.replace("stiure", "stupid")
+            
+
+
+          
+                
 
             if smoothed_prediction:
                 prediction_placeholder.markdown(f"### 🗣️ Predicted Text\n`{smoothed_prediction}`")
