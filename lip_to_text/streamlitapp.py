@@ -11,6 +11,26 @@ import time
 from typing import List
 from collections import deque
 
+dictionary = {
+    "fuck you": 1,
+    "fuck":0.8,
+    "kill you": 1,
+    "kill": 0.5,
+    "hate": 0.5,
+    "screw you": 1,
+    "fucking": 0.8,
+    "stupid":0.5
+}
+
+def violence_classify(prediction):
+    # not done
+    words = prediction.split(" ")
+    voilence_count = 0
+    for word in words:
+        if word in dictionary:
+            violence_count += dictionary[word]
+    
+
 def preprocess_lip_frame(frame):
     frame = tf.cast(frame, tf.float32)
     frame_np = frame.numpy()
@@ -132,7 +152,7 @@ if st.session_state.running:
             status_placeholder.warning("No face detected - please center your face in the camera")
             continue
 
-        if len(frames) == 100:
+        if len(frames) == 75:
             mean = tf.math.reduce_mean(frames)
             std = tf.math.reduce_std(tf.cast(frames, tf.float32))
             input_data = tf.cast((frames - mean), tf.float32) / std
@@ -148,7 +168,7 @@ if st.session_state.running:
             confidence = np.max(yhat)
             confidence_placeholder.progress(float(confidence))
 
-            decoder = tf.keras.backend.ctc_decode(yhat, [100], beam_width=100)[0][0].numpy()
+            decoder = tf.keras.backend.ctc_decode(yhat, [75], beam_width=75)[0][0].numpy()
             converted_prediction = tf.strings.reduce_join(num_to_char(decoder)).numpy().decode("utf-8")
             smoother.update(converted_prediction)
             smoothed_prediction = smoother.get_smoothed_prediction()
@@ -156,6 +176,7 @@ if st.session_state.running:
             if smoothed_prediction:
                 prediction_placeholder.markdown(f"### 🗣️ Predicted Text\n`{smoothed_prediction}`")
 
-            frames.clear()
+            for i in range (30):
+                frames.pop(i)
 
     cap.release()
