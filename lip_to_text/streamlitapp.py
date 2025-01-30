@@ -12,24 +12,26 @@ from typing import List
 from collections import deque
 
 dictionary = {
-    "fuck you": 1,
+    "fuckyou": 1,
     "fuck":0.8,
-    "kill you": 1,
+    "killyou": 1,
     "kill": 0.5,
     "hate": 0.5,
-    "screw you": 1,
+    "screwyou": 1,
     "fucking": 0.8,
-    "stupid":0.5
+    "stupid":0.5,
+    "foue":0.2
 }
 
 def violence_classify(prediction):
     # not done
     words = prediction.split(" ")
-    voilence_count = 0
+    violence_max = 0
     for word in words:
         if word in dictionary:
-            violence_count += dictionary[word]
-    
+            if dictionary[word] > violence_max:
+                violence_max = dictionary[word]
+    return violence_max
 
 def preprocess_lip_frame(frame):
     frame = tf.cast(frame, tf.float32)
@@ -121,6 +123,7 @@ if st.session_state.running:
         st.markdown("### 🔬 Model Input Visualization")
         visualization_placeholder = st.empty()
         prediction_placeholder = st.markdown("")
+        violence_placeholder = st.markdown("")
         status_placeholder = st.empty()
 
     confidence_placeholder = st.empty()
@@ -175,8 +178,10 @@ if st.session_state.running:
 
             if smoothed_prediction:
                 prediction_placeholder.markdown(f"### 🗣️ Predicted Text\n`{smoothed_prediction}`")
+                violence_value = violence_classify(smoothed_prediction)
+                violence_placeholder.markdown(f"Violence value:`{violence_value}`")
 
-            for i in range (30):
+            for i in range (15):
                 frames.pop(i)
 
     cap.release()
