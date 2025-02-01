@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from tensorflow.keras.layers import Conv3D, Dropout, BatchNormalization, Activation, MaxPool3D, LSTM, Dense, TimeDistributed, Bidirectional, Flatten, Reshape
 from tensorflow.keras.models import Sequential
 from utils import char_to_num
@@ -30,8 +32,12 @@ def load_model() -> Sequential:
     # Reshape to match LSTM input format (time, features)
     model.add(Reshape((75, -1)))
 
+    # print("Output shape before LSTM:", model.output_shape)
+
     # First LSTM block
     model.add(Bidirectional(LSTM(128, kernel_initializer='orthogonal', return_sequences=True)))
+
+
     model.add(Dropout(0.5))
 
     # Second LSTM block
@@ -42,7 +48,8 @@ def load_model() -> Sequential:
     model.add(Dense(char_to_num.vocabulary_size() + 1, kernel_initializer='he_normal', activation='softmax'))
 
     # Load the weights if they exist
-    weights_path = os.path.join('models', 'new_best_weights2.weights.h5')
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    weights_path = os.path.join(current_dir, 'models', 'new_best_weights2.weights.h5')
     if os.path.exists(weights_path):
         model.load_weights(weights_path)
     else:
