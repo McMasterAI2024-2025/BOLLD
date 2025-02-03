@@ -7,11 +7,11 @@
 ## BOLLD employs a multi-modal approach, integrating body language analysis, lip transcriptions, and reinforcement learning to detect threats in real-time using computer vision and natural language processing.
 
 ### Team Members:
-- Nicole Sorokin
-- Julia Brzustowski
-- Zuhair Qureshi
-- Grady Rueffer
-- Sophia Shantharupan
+- [Nicole Sorokin](https://github.com/NicoleSorokin)
+- [Julia Brzustowski](https://github.com/juliaabrz)
+- [Zuhair Qureshi](https://github.com/ZuhairQureshi)
+- [Grady Rueffer](https://github.com/GradyRuefferOutlook)
+- [Sophia Shantharupan](https://github.com/SophShan)
 
 ## 🚀 Use Cases  
 
