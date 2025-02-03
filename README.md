@@ -4,9 +4,7 @@
 # 📚 Learning
 # 🧩 Decoder
 
-## BOLLD leverages body language, lip transcriptions and reinforcement learning to detect threats in real-time.
-
-### A Multi-Modal Approach to Real-Time Threat Detection Using Computer Vision and Natural Language Processing
+## BOLLD employs a multi-modal approach, integrating body language analysis, lip transcriptions, and reinforcement learning to detect threats in real-time using computer vision and natural language processing.
 
 ### Team Members:
 - Nicole Sorokin
