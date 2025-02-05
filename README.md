@@ -59,6 +59,8 @@ Currently the app.py contains the body language code *training and details about
 
 ## 🚀 High-Level Overview  
 
+![process_flow_diagram](process_flow_diagram.drawio.png)
+
 ### 1️⃣ **First Stage**  
 - Use a **trained body language model** 🕺 and **lip reading** (via Mediapipe landmarks) 👄 to compute a **numerical threat probability** (0-1) for each.  
 - Combine both values to get a **combined threat score** 🔢.  
