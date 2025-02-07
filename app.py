@@ -50,10 +50,13 @@ dictionary = {
 st.set_page_config(page_title="Threat Detection System", layout="wide")
 
 # create sidebar
-st.sidebar.title("Settings")
-learning_rate = st.sidebar.slider("Learning Rate", 0.01, 0.5, 0.1)
-discount_factor = st.sidebar.slider("Discount Factor", 0.1, 0.99, 0.9)
-epsilon = st.sidebar.slider("Exploration Rate", 0.0, 1.0, 0.2)
+# st.sidebar.title("Settings")
+# learning_rate = st.sidebar.slider("Learning Rate", 0.01, 0.5, 0.1)
+# discount_factor = st.sidebar.slider("Discount Factor", 0.1, 0.99, 0.9)
+# epsilon = st.sidebar.slider("Exploration Rate", 0.0, 1.0, 0.2)
+learning_rate = 0.28
+discount_factor = 0.71
+epsilon = 0.39
 
 # title
 st.markdown("<h1 style='text-align: center; '>BOLLD</h1>", unsafe_allow_html=True)
@@ -103,7 +106,7 @@ except Exception as e:
 
 # threat probabilities buffer
 threat_probs_window = [[0.5, 0.5] for _ in range(40)]
-actions = ["escalate", "de-escalate"]
+actions = ["all-good", "de-escalate"]
 
 def rolling_threat_average(threat_probs):
     global threat_probs_window
@@ -216,12 +219,12 @@ def update_q_table(state, action, reward, next_state):
 video_placeholder = st.empty()
 
 # columns for metrics to be displayed
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4 = st.columns(4)
 threat_metric = col1.empty()
 action_metric = col2.empty()
-transcription_metric = col3.empty()
-violence_metric = col4.empty()
-q_values_metric = col5.empty()
+# transcription_metric = col3.empty()
+violence_metric = col3.empty()
+q_values_metric = col4.empty()
 
 # placeholder for the graph 
 graph_placeholder = st.empty()
@@ -329,7 +332,7 @@ if body_model is not None and lip_model is not None and st.session_state.running
                         action = choose_action(state)
                         
                         # Calculate reward based on combined threat
-                        reward = -1 if (action == "escalate" and combined_threat < 0.5) else 1
+                        reward = -1 if (action == "all-good" and combined_threat < 0.5) else 1
                         
                         # Update histories and Q-table
                         st.session_state.threat_history.append(combined_threat)
@@ -342,7 +345,7 @@ if body_model is not None and lip_model is not None and st.session_state.running
                         # Update UI
                         threat_metric.metric("Threat Level", f"{combined_threat:.2f}")
                         action_metric.metric("Current Action", action)
-                        transcription_metric.metric("Transcription", st.session_state.last_transcription)
+                        # transcription_metric.metric("Transcription", st.session_state.last_transcription)
                         violence_metric.metric("Violence Value", f"{st.session_state.last_violence_value:.2f}")
                         q_values_metric.metric("Q-Values", str(st.session_state.q_table.get(state, {})))
                         
