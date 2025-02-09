@@ -50,7 +50,7 @@ dictionary = {
 st.set_page_config(page_title="Threat Detection System", layout="wide")
 
 # create sidebar
-# st.sidebar.title("Settings")
+# st.sidebar.title("Results")
 # learning_rate = st.sidebar.slider("Learning Rate", 0.01, 0.5, 0.1)
 # discount_factor = st.sidebar.slider("Discount Factor", 0.1, 0.99, 0.9)
 # epsilon = st.sidebar.slider("Exploration Rate", 0.0, 1.0, 0.2)
@@ -219,12 +219,18 @@ def update_q_table(state, action, reward, next_state):
 video_placeholder = st.empty()
 
 # columns for metrics to be displayed
-col1, col2, col3, col4 = st.columns(4)
-threat_metric = col1.empty()
-action_metric = col2.empty()
-# transcription_metric = col3.empty()
-violence_metric = col3.empty()
-q_values_metric = col4.empty()
+# col1, col2, col3, col4 = st.columns(4)
+# threat_metric = col1.empty()
+# action_metric = col2.empty()
+# # transcription_metric = col3.empty()
+# violence_metric = col3.empty()
+# q_values_metric = col4.empty()
+
+st.sidebar.subheader("Metrics")
+threat_metric = st.sidebar.empty()
+action_metric = st.sidebar.empty()
+violence_metric = st.sidebar.empty()
+q_values_metric = st.sidebar.empty()
 
 # placeholder for the graph 
 graph_placeholder = st.empty()
