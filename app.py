@@ -114,14 +114,12 @@ def rolling_threat_average(threat_probs):
     threat_probs_window = threat_probs_window[:40]
     return np.mean(threat_probs_window, axis=0)
 
-def normalize_and_scale_landmarks(frame_landmarks, ref_lm_ind, left_lm_ind, right_lm_ind):
+def normalize_and_scale_landmarks(frame_landmarks, ref_lm_ind, left_lm_ind, right_lm_ind, expected_landmarks):
+    """
+    Normalize landmarks with consistent feature output size
+    """
     if frame_landmarks is None or frame_landmarks.landmark is None:
-        expected_landmarks = 33  # for pose
-        if ref_lm_ind > 33:  # face landmarks
-            expected_landmarks = 468
-        elif ref_lm_ind <= 21:  # hand landmarks
-            expected_landmarks = 21
-        return [0] * (expected_landmarks * 4)
+        return [0] * (expected_landmarks * 4)  # 4 features per landmark (x, y, z, visibility)
     
     body_frame = frame_landmarks.landmark
     reference_landmark = body_frame[ref_lm_ind]
@@ -135,18 +133,63 @@ def normalize_and_scale_landmarks(frame_landmarks, ref_lm_ind, left_lm_ind, righ
     )
     if scale_factor == 0:
         scale_factor = 1e-6
-    return list(
-        np.array([
-            [
+        
+    # Ensure we always return the expected number of features
+    landmarks_data = []
+    for i in range(expected_landmarks):
+        if i < len(body_frame):
+            landmark = body_frame[i]
+            landmarks_data.extend([
                 (landmark.x - ref_x) / scale_factor,
                 (landmark.y - ref_y) / scale_factor,
                 (landmark.z - ref_z) / scale_factor,
-                landmark.visibility
-            ]
-            for landmark in body_frame
-        ]).flatten()
-    )
+                getattr(landmark, 'visibility', 0.0)
+            ])
+        else:
+            landmarks_data.extend([0, 0, 0, 0])
+            
+    return landmarks_data
 
+def process_landmarks(results):
+    """
+    Process all landmarks with correct feature counts
+    """
+    # Define expected landmark counts
+    POSE_LANDMARKS = 33
+    FACE_LANDMARKS = 468
+    HAND_LANDMARKS = 21
+    
+    # Process each landmark set
+    pose_features = normalize_and_scale_landmarks(
+        results.pose_landmarks, 0, 11, 12, POSE_LANDMARKS
+    )
+    
+    face_features = normalize_and_scale_landmarks(
+        results.face_landmarks, 0, 33, 263, FACE_LANDMARKS
+    )
+    
+    right_hand_features = normalize_and_scale_landmarks(
+        results.right_hand_landmarks, 0, 4, 20, HAND_LANDMARKS
+    )
+    
+    left_hand_features = normalize_and_scale_landmarks(
+        results.left_hand_landmarks, 0, 4, 20, HAND_LANDMARKS
+    )
+    
+    # Combine all features
+    all_features = pose_features + face_features + right_hand_features + left_hand_features
+    
+    # Verify total feature count
+    expected_features = (POSE_LANDMARKS + FACE_LANDMARKS + HAND_LANDMARKS * 2) * 4
+    if len(all_features) != expected_features:
+        print(f"Warning: Feature count mismatch. Expected {expected_features}, got {len(all_features)}")
+        # Pad with zeros if necessary
+        if len(all_features) < expected_features:
+            all_features.extend([0] * (expected_features - len(all_features)))
+        else:
+            all_features = all_features[:expected_features]
+    
+    return all_features
 # Lip reading functions
 def violence_classify(prediction):
     words = prediction.split(" ")
@@ -354,18 +397,7 @@ if body_model is not None and lip_model is not None and st.session_state.running
                     # Process body language
                     try:
                         # Normalize landmarks and make prediction
-                        normalized_pose_row = normalize_and_scale_landmarks(results.pose_landmarks, 0, 11, 12)
-                        normalized_face_row = normalize_and_scale_landmarks(results.face_landmarks, 0, 33, 263)
-                        normalized_right_hand_row = normalize_and_scale_landmarks(results.right_hand_landmarks, 0, 4, 20) if results.right_hand_landmarks else [0] * (21 * 4)
-                        normalized_left_hand_row = normalize_and_scale_landmarks(results.left_hand_landmarks, 0, 4, 20) if results.left_hand_landmarks else [0] * (21 * 4)
-                        row = normalized_pose_row + normalized_face_row + normalized_right_hand_row + normalized_left_hand_row
-
-                        print(f"Pose features: {len(normalized_pose_row)}")
-                        print(f"Face features: {len(normalized_face_row)}")
-                        print(f"Right hand features: {len(normalized_right_hand_row)}")
-                        print(f"Left hand features: {len(normalized_left_hand_row)}")
-                        print(f"Total features: {len(row)}")
-                        
+                        row = process_landmarks(results)
                         X = pd.DataFrame([row])
                         body_language_prob = body_model.predict_proba(X)[0]
                         
