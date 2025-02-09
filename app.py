@@ -226,7 +226,7 @@ video_placeholder = st.empty()
 # violence_metric = col3.empty()
 # q_values_metric = col4.empty()
 
-st.sidebar.subheader("Metrics")
+st.sidebar.subheader("Results")
 threat_metric = st.sidebar.empty()
 action_metric = st.sidebar.empty()
 violence_metric = st.sidebar.empty()
