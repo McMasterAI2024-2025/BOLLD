@@ -7,8 +7,7 @@ from tensorflow.keras.models import Sequential
 from utils import char_to_num
 
 def load_model() -> Sequential:
-    # Clear any existing backend session
-    tf.keras.backend.clear_session()
+    tf.keras.backend.clear_session() # clear any existing backend states
     
     # Build model with explicit names for layers
     model = Sequential([
