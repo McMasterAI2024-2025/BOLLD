@@ -116,7 +116,12 @@ def rolling_threat_average(threat_probs):
 
 def normalize_and_scale_landmarks(frame_landmarks, ref_lm_ind, left_lm_ind, right_lm_ind):
     if frame_landmarks is None or frame_landmarks.landmark is None:
-        return [0] * (33 * 4)  # return zeros for missing landmarks
+        expected_landmarks = 33  # for pose
+        if ref_lm_ind > 33:  # face landmarks
+            expected_landmarks = 468
+        elif ref_lm_ind <= 21:  # hand landmarks
+            expected_landmarks = 21
+        return [0] * (expected_landmarks * 4)
     
     body_frame = frame_landmarks.landmark
     reference_landmark = body_frame[ref_lm_ind]
@@ -229,7 +234,6 @@ video_placeholder = st.empty()
 st.sidebar.subheader("Results")
 threat_metric = st.sidebar.empty()
 action_metric = st.sidebar.empty()
-violence_metric = st.sidebar.empty()
 q_values_metric = st.sidebar.empty()
 
 # placeholder for the graph 
@@ -274,17 +278,44 @@ predictor = dlib.shape_predictor("lip_to_text/shape_predictor_68_face_landmarks.
 # main function that runs the threat detection system
 if body_model is not None and lip_model is not None and st.session_state.running:
     try:
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            st.error("Error: Could not open webcam.")
-        else:
-            with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
-                while cap.isOpened() and st.session_state.running:
+        # Try different camera indices
+        for camera_index in [0, 1, 2]:
+            cap = cv2.VideoCapture(camera_index)
+            if cap.isOpened():
+                # Test reading a frame
+                ret, test_frame = cap.read()
+                if ret:
+                    # st.success(f"Successfully connected to camera {camera_index}")
+                    break
+                else:
+                    cap.release()
+            if camera_index == 2:  # If we've tried all cameras
+                st.error("Could not connect to any camera. Please check your webcam connection.")
+                st.stop()
+
+        # Configure camera properties for better performance
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+        cap.set(cv2.CAP_PROP_FPS, 15)
+
+        with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+            frame_count = 0
+            retry_count = 0
+            max_retries = 3
+
+            while cap.isOpened() and st.session_state.running:
+                try:
                     ret, frame = cap.read()
                     if not ret:
-                        st.error("Error: Could not read frame from webcam.")
-                        break
+                        retry_count += 1
+                        if retry_count > max_retries:
+                            st.error("Camera connection lost. Please restart the application.")
+                            break
+                        continue
                     
+                    retry_count = 0  # Reset retry count on successful frame read
+                    frame_count += 1
+
                     # Process frame for both body language and lip reading
                     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     image.flags.writeable = False
@@ -328,6 +359,12 @@ if body_model is not None and lip_model is not None and st.session_state.running
                         normalized_right_hand_row = normalize_and_scale_landmarks(results.right_hand_landmarks, 0, 4, 20) if results.right_hand_landmarks else [0] * (21 * 4)
                         normalized_left_hand_row = normalize_and_scale_landmarks(results.left_hand_landmarks, 0, 4, 20) if results.left_hand_landmarks else [0] * (21 * 4)
                         row = normalized_pose_row + normalized_face_row + normalized_right_hand_row + normalized_left_hand_row
+
+                        print(f"Pose features: {len(normalized_pose_row)}")
+                        print(f"Face features: {len(normalized_face_row)}")
+                        print(f"Right hand features: {len(normalized_right_hand_row)}")
+                        print(f"Left hand features: {len(normalized_left_hand_row)}")
+                        print(f"Total features: {len(row)}")
                         
                         X = pd.DataFrame([row])
                         body_language_prob = body_model.predict_proba(X)[0]
@@ -352,7 +389,7 @@ if body_model is not None and lip_model is not None and st.session_state.running
                         threat_metric.metric("Threat Level", f"{combined_threat:.2f}")
                         action_metric.metric("Current Action", action)
                         # transcription_metric.metric("Transcription", st.session_state.last_transcription)
-                        violence_metric.metric("Violence Value", f"{st.session_state.last_violence_value:.2f}")
+                        # violence_metric.metric("Violence Value", f"{st.session_state.last_violence_value:.2f}")
                         q_values_metric.metric("Q-Values", str(st.session_state.q_table.get(state, {})))
                         
                         # Update graphs
@@ -370,9 +407,19 @@ if body_model is not None and lip_model is not None and st.session_state.running
                     except Exception as e:
                         st.error(f"Error processing frame: {str(e)}")
                         
+                except Exception as e:
+                    st.error(f"Error processing frame: {str(e)}")
+                    continue
+
+            # Proper cleanup
             cap.release()
+            cv2.destroyAllWindows()
+
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"Camera error: {str(e)}")
+        if 'cap' in locals():
+            cap.release()
+        cv2.destroyAllWindows()
 
 # Display Q-table
 st.header("Q-Learning Table")
