@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from collections import deque
 import tensorflow as tf
 import dlib
+import json
 from lip_to_text.utils import num_to_char
 from lip_to_text.modelutils import load_model as load_lip_model
 warnings.filterwarnings("ignore")
@@ -68,11 +69,74 @@ col1, col2, col3, col4, col5, col6 = st.columns(6)
 start_button = col1.button('Start', key='start_button')
 stop_button = col6.button('Stop', key='stop_button')
 
+# functions for saving and loading the model
+def calculate_model_performance(reward_history):
+    """
+    Calculate a performance metric based on recent rewards
+    """
+    if not reward_history:
+        return -float('inf')
+    # Use the last 1000 rewards to evaluate performance
+    recent_rewards = list(reward_history)[-1000:]
+    return np.mean(recent_rewards)
+
+def save_best_model(q_table, reward_history, filepath='best_q_table.json', metric_file='best_metric.json'):
+    """
+    Save the Q-table only if it performs better than the previous best
+    """
+    current_performance = calculate_model_performance(reward_history)
+    
+    # Load previous best performance
+    best_performance = -float('inf')
+    if os.path.exists(metric_file):
+        try:
+            with open(metric_file, 'r') as f:
+                best_performance = json.load(f)['performance']
+        except:
+            pass
+    
+    # Only save if we have a new best performance
+    if current_performance > best_performance:
+        # Save the Q-table
+        serializable_q_table = {
+            state: {action: float(value) for action, value in actions.items()}
+            for state, actions in q_table.items()
+        }
+        
+        try:
+            with open(filepath, 'w') as f:
+                json.dump(serializable_q_table, f, indent=4)
+            
+            # Save the new best performance
+            with open(metric_file, 'w') as f:
+                json.dump({'performance': current_performance}, f)
+                
+            return True, current_performance
+        except Exception as e:
+            print(f"Error saving Q-table: {e}")
+            return False, best_performance
+            
+    return False, best_performance
+
+def load_best_model(filepath='best_q_table.json'):
+    """
+    Load the best Q-table model
+    """
+    try:
+        if os.path.exists(filepath):
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        print(f"Error loading Q-table: {e}")
+        return {}
+    
 # execute buttons
 if start_button:
     st.session_state.running = True
 if stop_button:
     st.session_state.running = False
+    save_best_model(st.session_state.q_table, st.session_state.reward_history)
 
 # init MediaPipe
 mp_drawing = mp.solutions.drawing_utils
@@ -393,6 +457,9 @@ if body_model is not None and lip_model is not None and st.session_state.running
                         st.session_state.last_transcription = prediction
                         st.session_state.last_violence_value = violence_classify(prediction)
                         st.session_state.lip_frames = st.session_state.lip_frames[15:]
+                        if 'q_table' not in st.session_state:
+                            st.session_state.q_table = load_best_model()
+                            st.session_state.best_performance = -float('inf')
                     
                     # Process body language
                     try:
@@ -423,6 +490,15 @@ if body_model is not None and lip_model is not None and st.session_state.running
                         # transcription_metric.metric("Transcription", st.session_state.last_transcription)
                         # violence_metric.metric("Violence Value", f"{st.session_state.last_violence_value:.2f}")
                         q_values_metric.metric("Q-Values", str(st.session_state.q_table.get(state, {})))
+
+                        if frame_count % 100 == 0:  # Check every 100 frames
+                            was_saved, best_perf = save_best_model(
+                                st.session_state.q_table, 
+                                st.session_state.reward_history
+                            )
+                            if was_saved:
+                                st.sidebar.success(f"Saved new best model! Performance: {best_perf:.3f}")
+
                         
                         # Update graphs
                         update_graphs()
