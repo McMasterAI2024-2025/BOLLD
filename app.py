@@ -44,7 +44,18 @@ dictionary = {
     "screwyou": 1,
     "fucking": 0.8,
     "stupid": 0.5,
-    "foue": 0.2
+    
+    # Common variations and misspellings
+    "foue": 0.8,
+    "fiun": 0.8,
+    "fuk": 0.8,
+    "fuc": 0.8,
+    "fck": 0.8,
+    "fuq": 0.8,
+    "fook": 0.8,
+    "soue": 0.5,  # common misread of "you"
+    "sobu": 0.5,  # common misread of "you"
+    "fu": 0.8,
 }
 
 # config the page
@@ -254,15 +265,67 @@ def process_landmarks(results):
             all_features = all_features[:expected_features]
     
     return all_features
+
+def clean_prediction(prediction):
+    """Clean and normalize the prediction text"""
+    # Convert to lowercase
+    text = prediction.lower()
+    
+    # Replace common misreadings
+    replacements = {
+        "foue": "fuck",
+        "fiun": "fuck",
+        "fuc": "fuck",
+        "fck": "fuck",
+        "fuq": "fuck",
+        "fook": "fuck",
+        "fu": "fuck",
+        "slasin": "kill",
+        "slain": "kill",
+        "seiu": "shoot",
+        "siux sobu": "screwyou",
+        "soue": "you",
+        "sobu": "you",
+    }
+    
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    
+    # Remove spaces to detect combined phrases
+    text_no_spaces = text.replace(" ", "")
+    
+    return text, text_no_spaces
+
+
 # Lip reading functions
 def violence_classify(prediction):
-    words = prediction.split(" ")
+    """Enhanced violence classification with phrase detection"""
+    text, text_no_spaces = clean_prediction(prediction)
+    words = text.split()
     violence_max = 0
+    
+    # Check for combined phrases without spaces
+    for phrase, value in dictionary.items():
+        if phrase in text_no_spaces:
+            violence_max = max(violence_max, value)
+    
+    # Check individual words
     for word in words:
         if word in dictionary:
-            if dictionary[word] > violence_max:
-                violence_max = dictionary[word]
+            violence_max = max(violence_max, dictionary[word])
+            
+    # Check for two-word combinations
+    for i in range(len(words)-1):
+        two_words = words[i] + words[i+1]
+        if two_words in dictionary:
+            violence_max = max(violence_max, dictionary[two_words])
+    
+    # Increase sensitivity when multiple violent words are detected
+    if sum(1 for word in words if word in dictionary) > 1:
+        violence_max = min(1.0, violence_max + 0.2)
+    
     return violence_max
+
 
 def preprocess_lip_frame(frame):
     frame = tf.cast(frame, tf.float32)
@@ -327,6 +390,24 @@ def update_q_table(state, action, reward, next_state):
         st.session_state.q_table[state][action]
     )
 
+def choose_action(state):
+    if np.random.rand() < epsilon:
+        return np.random.choice(actions)
+    if state in st.session_state.q_table:
+        return max(st.session_state.q_table[state], key=st.session_state.q_table[state].get)
+    return np.random.choice(actions)
+
+# Calculate reward based on whether the action matches the threat level
+def calculate_reward(action, combined_threat):
+    high_threat = combined_threat >= 0.5
+    
+    if high_threat and action == "de-escalate":
+        return 1  # Reward for correctly de-escalating high threat
+    elif not high_threat and action == "all-good":
+        return 1  # Reward for correctly identifying safe situation
+    else:
+        return -1  # Penalty for incorrect action
+    
 # placeholder for video feed
 video_placeholder = st.empty()
 
@@ -437,26 +518,19 @@ if body_model is not None and lip_model is not None and st.session_state.running
                     
                     # Process lip frames when we have enough
                     if len(st.session_state.lip_frames) >= 75:
-                        # print(st.session_state.lip_frames)
                         input_data = tf.stack(st.session_state.lip_frames)
                         mean = tf.math.reduce_mean(input_data)
                         std = tf.math.reduce_std(tf.cast(input_data, tf.float32))
                         input_data = tf.cast((input_data - mean), tf.float32) / std
                         
                         yhat = lip_model.predict(tf.expand_dims(input_data, axis=0))
-                        decoder = tf.keras.backend.ctc_decode(yhat, [75], beam_width=75)[0][0].numpy()
+                        decoder = tf.keras.backend.ctc_decode(yhat, [75], beam_width=100)[0][0].numpy()  # Increased beam width
                         prediction = tf.strings.reduce_join(num_to_char(decoder)).numpy().decode("utf-8")
                         
-                        # Clean up prediction text
-                        prediction = prediction.replace("foue", "fuck").replace("fiun", "fuck")
-                        prediction = prediction.replace("slasin", "kill").replace("slain", "kill")
-                        prediction = prediction.replace("seiu", "shoot")
-                        prediction = prediction.replace("siux sobu", "screwyou")
-                        prediction = prediction.replace("soue", "you").replace("sobu", "you")
-                        
+                        # Process the prediction
                         st.session_state.last_transcription = prediction
                         st.session_state.last_violence_value = violence_classify(prediction)
-                        st.session_state.lip_frames = st.session_state.lip_frames[15:]
+                        st.session_state.lip_frames = st.session_state.lip_frames[15:]  # Keep more context
                         if 'q_table' not in st.session_state:
                             st.session_state.q_table = load_best_model()
                             st.session_state.best_performance = -float('inf')
@@ -474,7 +548,7 @@ if body_model is not None and lip_model is not None and st.session_state.running
                         action = choose_action(state)
                         
                         # Calculate reward based on combined threat
-                        reward = -1 if (action == "all-good" and combined_threat < 0.5) else 1
+                        reward = calculate_reward(action, combined_threat)
                         
                         # Update histories and Q-table
                         st.session_state.threat_history.append(combined_threat)
