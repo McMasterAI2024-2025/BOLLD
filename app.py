@@ -50,7 +50,7 @@ mp_holistic = mp.solutions.holistic
 @st.cache_resource
 def load_model():
     try:
-        with open('body_language_decoder/body_lang_model.pkl', 'rb') as f:
+        with open('machine_learning/body_language_decoder/body_lang_model.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         st.error("Model file 'body_lang_model.pkl' not found. Please ensure the model file is in the correct location.")
