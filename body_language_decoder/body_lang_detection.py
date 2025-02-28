@@ -97,9 +97,9 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
                 #pose_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in pose]).flatten())
                 
                 # Extract Face landmarks
-                face = results.face_landmarks.landmark
-                face_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in face]).flatten())
-                normalized_face_row = normalize_and_scale_landmarks(results.face_landmarks, 0, 33, 263)
+                # face = results.face_landmarks.landmark
+                # face_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in face]).flatten())
+                # normalized_face_row = normalize_and_scale_landmarks(results.face_landmarks, 0, 33, 263)
 
                 right_hand = results.right_hand_landmarks
                 left_hand = results.left_hand_landmarks
@@ -116,7 +116,7 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
                     normalized_left_hand_row = normalize_and_scale_landmarks(left_hand, 0, 4, 20)
                    
                 # Concatenate rows
-                row = normalized_pose_row+normalized_face_row+normalized_right_hand_row+normalized_left_hand_row
+                row = normalized_pose_row+normalized_right_hand_row+normalized_left_hand_row #+normalized_face_row
                 # Make Detections
                 try:
                     X = pd.DataFrame([row])
