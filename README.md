@@ -135,5 +135,4 @@ Currently the app.py contains the body language code *training and details about
 - 🖥️ Test the model with **webcam** integration  
 
 
-### For more details, please refer to the research document:
-![BOLLD Research Document](/assets/BOLLD_Research_Document.pdf)
+### For more details, please refer to the [research document](BOLLD_Research_Document.pdf).
